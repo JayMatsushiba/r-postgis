@@ -1,0 +1,60 @@
+---
+title: "r-postgis"
+author: "Jay Matsushiba"
+date: "2024-03-13"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(sf)
+library(RPostgres) 
+library(tidyverse)
+```
+
+## R and PostGIS
+This is sample code for accessing PostGIS database, running on a local Docker container. 
+
+Following documentation for sf: https://r-spatial.github.io/sf/articles/sf2.html 
+
+### Using st_read
+In this case, the data requested from the db is read entirey into R. This would work well for smaller tables, but not for extremely large datasets.  
+```{r read}
+st_layers("postgresql://postgres:fr24Password@localhost:5432/shark")
+# multiple different layers or tables to read within the shark db
+
+# reads the shark table in the shark db
+sharks <- st_read("postgresql://postgres:fr24Password@localhost:5432/shark", "shark")
+
+ggplot() +
+  geom_sf(data = sharks)
+```
+
+### reading and writing directly to and from spatial databases
+Using this tutorial for understanding how to connect to PostgreSQL database 
+https://www.r-bloggers.com/2020/08/a-crash-course-on-postgresql-for-r-users-2/ 
+
+For some reason, RPostgreSQL package caused RStudio to crash. Using the RPostgres package works fine. 
+Tried this tutorial first, then ran into that problem: 
+https://www.r-bloggers.com/2015/05/getting-started-with-postgresql-in-r/ 
+
+```{r}
+# postgresql://postgres:fr24Password@localhost:5432/shark
+conn = DBI::dbConnect(Postgres(),
+                 dbname = "shark",
+                 host = "localhost",
+                 port = "5432",
+                 user = "postgres",
+                 password = "fr24Password"
+                 )
+dbExistsTable(conn, "shark") # TRUE
+
+# get entire layer 
+shark = st_read(conn, "shark")
+
+# query for first species in layer
+shark_1 = st_read(conn, query = "SELECT * FROM shark LIMIT 1")
+
+dbDisconnect(conn)
+```
+
